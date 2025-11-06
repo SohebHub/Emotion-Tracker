@@ -1,0 +1,874 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emotion Tracker (One‑file) — v2 with Calendar</title>
+  <style>
+    :root { --bg:#0b0b0e; --panel:#121216; --panel2:#16161b; --text:#eaeaf0; --muted:#a3a3b2; --border:#2a2a33; --accent:#7c7cff; --good:#6ee7b7; --warn:#fbbf24; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 26px; margin: 0 0 6px; }
+    p.lead { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+    .rem { background: #16161b; border: 1px dashed var(--border); padding: 8px 12px; border-radius: 10px; color: var(--muted); font-size: 13px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, max-content); gap: 8px; background: var(--panel2); padding: 6px; border-radius: 12px; width: max-content; }
+    .tabbtn { border: 1px solid transparent; padding: 6px 10px; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+    .tabbtn.active { background: var(--panel); color: var(--text); border-color: var(--border); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+    .grid { display: grid; gap: 16px; }
+    .cols-3 { grid-template-columns: 1fr; }
+    @media (min-width: 960px) { .cols-3 { grid-template-columns: 1fr 1fr 1fr; } }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .card h3 { margin: 0; font-size: 16px; }
+    .ch { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .cc { padding: 14px; }
+    .cf { padding: 12px 14px; border-top: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap: wrap;}
+    label { font-size: 13px; color: var(--text); display:block; margin-bottom:6px; }
+    input[type="date"], input[type="time"], input[type="file"], input[type="text"], textarea, select {
+      width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; outline: none;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    .row { display:grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .sep { border-top: 1px dashed var(--border); margin: 10px 0; }
+    .sliderrow{ margin-bottom: 10px; }
+    .sliderrow .top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 6px; }
+    .sliderrow .name{ font-weight: 600; display:flex; align-items:center; gap:8px; }
+    .sliderrow input[type="range"]{ width: 100%; }
+    .ticks{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-top: 2px; }
+    .btn { background: var(--accent); border: 1px solid var(--accent); color: white; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+    .btn.small { padding: 7px 10px; font-weight: 500; }
+    .list { display:flex; flex-direction: column; gap: 10px; }
+    .item { background: var(--panel2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+    .item .meta { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size: 13px; color: var(--muted); }
+    .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
+    .chip { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; display:flex; align-items:center; justify-content:space-between; font-size: 12px; }
+    .note { margin-top: 8px; white-space: pre-wrap; }
+    .controls{ display:flex; gap:6px; flex-wrap: wrap; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .charts { display:grid; gap:16px; grid-template-columns: 1fr; }
+    @media (min-width: 1100px) { .charts { grid-template-columns: 2fr 1fr; } }
+    canvas { background: #0f0f14; border: 1px solid var(--border); border-radius: 12px; padding: 8px; }
+    a.link { color: #a8a8ff; text-decoration: none; }
+    .pill { font-size: 12px; color: var(--muted); }
+    /* Calendar */ 
+    .cal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .cal-title{ font-weight:700; }
+    .cal-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+    .cal-dayname{ text-align:center; font-size:12px; color:var(--muted); padding:6px 0; }
+    .cal-cell{ border:1px solid var(--border); border-radius:10px; min-height:78px; padding:6px; background:var(--panel2); }
+    .cal-cell.dim{ opacity:.5; }
+    .cal-date{ font-size:12px; color: var(--muted); display:flex; align-items:center; justify-content:space-between;}
+    .dot{ width:6px; height:6px; background: var(--good); border-radius: 100%; display:inline-block; }
+    .dot.hol{ background: var(--warn); }
+    .eventlist{ margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+    .ev{ font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ev .holtag{ color: var(--warn); margin-right:6px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Emotion Tracker</h1>
+    <p class="lead">Log emotions (1–5) with notes, multiple times per day. Everything saves locally on your device.</p>
+    <div class="rem">Before installing updates or changing files, export a backup: <b>Trends → Export JSON</b>. (I'll remind you.)</div>
+
+    <div class="tabs" style="margin-top:10px;">
+      <button class="tabbtn active" data-tab="log">Log</button>
+      <button class="tabbtn" data-tab="history">History</button>
+      <button class="tabbtn" data-tab="calendar">Calendar</button>
+      <button class="tabbtn" data-tab="trends">Trends</button>
+    </div>
+
+    <!-- LOG TAB -->
+    <section id="tab-log">
+      <div class="grid cols-3" style="margin-top:16px;">
+        <div class="card">
+          <div class="ch"><h3>New Entry</h3></div>
+          <div class="cc">
+            <div class="row">
+              <div><label for="date">Date</label><input id="date" type="date"></div>
+              <div><label for="time">Time</label><input id="time" type="time"></div>
+            </div>
+
+            <div class="sep"></div>
+
+            <div id="sliders"></div>
+
+            <div class="sep"></div>
+
+            <label for="notes">Notes</label>
+            <textarea id="notes" placeholder="Anything notable, triggers, context..."></textarea>
+          </div>
+          <div class="cf">
+            <div class="pill">Scale: 1 = very low · 3 = neutral · 5 = very high</div>
+            <div class="controls">
+              <button class="btn ghost" id="resetBtn">Reset</button>
+              <button class="btn" id="saveBtn">Add Entry</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Today & Recent</h3></div>
+          <div class="cc">
+            <div id="recentList" class="list"></div>
+            <div id="emptyRecent" class="muted">No entries yet. Log your first mood on the left.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY TAB -->
+    <section id="tab-history" style="display:none; margin-top:16px;">
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="ch"><h3>Select a date</h3></div>
+          <div class="cc">
+            <label>Day</label>
+            <input id="histDate" type="date">
+            <div class="sep"></div>
+            <div class="muted">Showing entries & events for selected date.</div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Entries</h3></div>
+          <div class="cc">
+            <div id="histList" class="list"></div>
+            <div id="emptyHist" class="muted">No entries for this date.</div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 3;">
+          <div class="ch"><h3>Events on this date</h3></div>
+          <div class="cc">
+            <div id="histEvents" class="list"></div>
+            <div id="emptyHistEvents" class="muted">No events for this date.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALENDAR TAB -->
+    <section id="tab-calendar" style="display:none; margin-top:16px;">
+      <div class="grid cols-3">
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Calendar</h3></div>
+          <div class="cc">
+            <div class="cal-head">
+              <div>
+                <button class="btn small ghost" id="calPrev">◀</button>
+                <button class="btn small ghost" id="calNext">▶</button>
+              </div>
+              <div class="cal-title" id="calTitle"></div>
+              <div class="muted">Shows UK Public Holidays + Your Events</div>
+            </div>
+            <div class="sep"></div>
+            <div class="cal-grid" id="calDaynames"></div>
+            <div class="cal-grid" id="calGrid" style="margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><h3>Add Event</h3></div>
+          <div class="cc">
+            <label>Title</label>
+            <input id="evTitle" type="text" placeholder="e.g., Therapy session" />
+            <div class="row" style="margin-top:8px;">
+              <div><label>Date</label><input id="evDate" type="date" /></div>
+              <div><label>Time (optional)</label><input id="evTime" type="time" /></div>
+            </div>
+            <div class="sep"></div>
+            <label>Notes (optional)</label>
+            <textarea id="evNotes" placeholder=""></textarea>
+            <div class="sep"></div>
+            <div class="controls">
+              <button class="btn" id="evAdd">Add Event</button>
+              <button class="btn ghost" id="evExport">Export Events JSON</button>
+              <label for="evImport" class="btn ghost">Import Events JSON</label>
+              <input id="evImport" type="file" accept="application/json" style="display:none" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 3;">
+          <div class="ch"><h3>Events on Selected Day</h3></div>
+          <div class="cc">
+            <div id="calEvents" class="list"></div>
+            <div id="calEventsEmpty" class="muted">Tap a day in the calendar to see events here.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRENDS TAB -->
+    <section id="tab-trends" style="display:none; margin-top:16px;">
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="ch"><h3>Range</h3></div>
+          <div class="cc">
+            <div class="row">
+              <div>
+                <label>Start</label>
+                <input id="rangeStart" type="date">
+              </div>
+              <div>
+                <label>End</label>
+                <input id="rangeEnd" type="date">
+              </div>
+            </div>
+            <div class="sep"></div>
+            <div class="controls">
+              <button class="btn small ghost" id="btn7">Last 7d</button>
+              <button class="btn small ghost" id="btn30">Last 30d</button>
+              <button class="btn small ghost" id="btnAll">All time</button>
+            </div>
+            <div class="sep"></div>
+            <div class="controls">
+              <button class="btn small ghost" id="btnExport">Export Entries JSON</button>
+              <label class="btn small ghost" for="importFile">Import Entries JSON</label>
+              <input id="importFile" type="file" accept="application/json" style="display:none" />
+            </div>
+            <div class="sep"></div>
+            <div class="muted">Events during this range are shown below the charts.</div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Daily Averages</h3></div>
+          <div class="cc"><canvas id="lineChart" height="220"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><h3>Entries per Day</h3></div>
+          <div class="cc"><canvas id="barChart" height="220"></canvas></div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Overall Averages (Selected Range)</h3></div>
+          <div class="cc"><canvas id="radarChart" height="260"></canvas></div>
+        </div>
+
+        <div class="card" style="grid-column: span 3;">
+          <div class="ch"><h3>Events in This Range</h3></div>
+          <div class="cc">
+            <div id="rangeEvents" class="list"></div>
+            <div id="rangeEventsEmpty" class="muted">No events in the selected range.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="muted" style="margin-top:14px;">Data is stored locally on your device (localStorage). You can clear it anytime via your browser settings.</p>
+  </div>
+
+<script>
+  // --------- Data & Utilities ---------
+  const EMOTIONS = [
+    ['😊','Happy'], ['🤩','Excited'], ['😔','Lonely'], ['😏','Horny'],
+    ['😫','Exhausted'], ['😨','Scared'], ['😐','Bored'], ['😟','Worried']
+  ];
+  const LS_KEY = 'moodEntries.v1';
+  const EV_LS_KEY = 'customEvents.v1'; // user-created events
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function formatDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function formatTime(d){ return pad(d.getHours())+':'+pad(d.getMinutes()); }
+  function toDisplay(ts){ return new Date(ts).toLocaleString(); }
+  function dailyKey(iso){ const d = new Date(iso); return formatDate(d); }
+  function parseLocalDateTime(dateStr, timeStr){
+    const [y,m,d] = (dateStr||'').split('-').map(Number);
+    const [hh,mm] = (timeStr||'').split(':').map(Number);
+    return new Date(y||1970, (m||1)-1, d||1, hh||0, mm||0, 0);
+  }
+  function uuid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+  function download(filename, content, mime='text/plain'){
+    const blob = new Blob([content], { type: mime+';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function loadEntries(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } }
+  function saveEntries(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+  function loadEvents(){ try { return JSON.parse(localStorage.getItem(EV_LS_KEY) || '[]'); } catch { return []; } }
+  function saveEvents(arr){ localStorage.setItem(EV_LS_KEY, JSON.stringify(arr)); }
+
+  function entryToICS(e){
+    const dt = new Date(e.iso);
+    const dtEnd = new Date(dt.getTime() + 15*60*1000);
+    const fmt = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+    const summary = 'Mood entry: ' + EMOTIONS.map(([emo,k]) => `${emo} ${k} ${e.emotions[k]}`).join(', ');
+    const description = 'Notes: ' + (e.notes || '(none)');
+    return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Emotion Tracker//EN
+BEGIN:VEVENT
+UID:${e.id}@emotion-tracker
+DTSTAMP:${fmt(new Date())}
+DTSTART:${fmt(dt)}
+DTEND:${fmt(dtEnd)}
+SUMMARY:${summary}
+DESCRIPTION:${description.replace(/\\n/g,'\\\\n')}
+END:VEVENT
+END:VCALENDAR`;
+  }
+
+  function customEventToICS(ev){
+    const dt = parseLocalDateTime(ev.date, ev.time || '00:00');
+    const dtEnd = new Date(dt.getTime() + 60*60*1000);
+    const fmt = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+    const desc = (ev.notes || '') + (ev.holiday ? ' (UK Public Holiday)' : '');
+    return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Emotion Tracker//EN
+BEGIN:VEVENT
+UID:${ev.id}@emotion-tracker-event
+DTSTAMP:${fmt(new Date())}
+DTSTART:${fmt(dt)}
+DTEND:${fmt(dtEnd)}
+SUMMARY:${ev.title}
+DESCRIPTION:${desc.replace(/\\n/g,'\\\\n')}
+END:VEVENT
+END:VCALENDAR`;
+  }
+
+  // --------- UK Public Holidays (England & Wales) ---------
+  function easterSunday(year){
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19*a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2*e + 2*i - h - k) % 7;
+    const m = Math.floor((a + 11*h + 22*l) / 451);
+    const month = Math.floor((h + l - 7*m + 114) / 31);
+    const day = ((h + l - 7*m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+  }
+  function firstMonday(year, month){
+    const d = new Date(year, month, 1);
+    const day = d.getDay();
+    const add = (8 - (day || 7)) % 7;
+    return new Date(year, month, 1 + add);
+  }
+  function lastMonday(year, month){
+    const d = new Date(year, month + 1, 0);
+    const day = d.getDay();
+    const sub = (day === 0 ? 6 : day - 1);
+    return new Date(year, month + 1, 0 - sub);
+  }
+  function observed(date){
+    const dow = date.getDay();
+    if (dow === 6) return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 2);
+    if (dow === 0) return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    return date;
+  }
+  function ukHolidaysEW(year){
+    const arr = [];
+    const push = (title, d) => arr.push({ id: 'hol-' + year + '-' + title.replace(/\\s+/g,'-'), title, date: formatDate(d), time: null, notes: '', holiday: true });
+
+    const ny = observed(new Date(year, 0, 1));
+    push("New Year's Day", ny);
+
+    const easter = easterSunday(year);
+    const goodFriday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() - 2);
+    const easterMon = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1);
+    push('Good Friday', goodFriday);
+    push('Easter Monday', easterMon);
+
+    push('Early May bank holiday', firstMonday(year, 4));
+    push('Spring bank holiday', lastMonday(year, 4));
+    push('Summer bank holiday', lastMonday(year, 7));
+
+    let xmas = new Date(year, 11, 25);
+    let boxing = new Date(year, 11, 26);
+    let xObs = observed(xmas);
+    let bObs = observed(boxing);
+    if (formatDate(xObs) === formatDate(bObs)) {
+      bObs = new Date(bObs.getFullYear(), bObs.getMonth(), bObs.getDate() + 1);
+    }
+    push('Christmas Day', xObs);
+    push('Boxing Day', bObs);
+
+    return arr;
+  }
+  function holidayMapForYears(fromYear, toYear){
+    const map = new Map();
+    for (let y=fromYear; y<=toYear; y++){
+      ukHolidaysEW(y).forEach(ev => {
+        const key = ev.date + '|' + (ev.title || '');
+        map.set(key, ev);
+      });
+    }
+    return Array.from(map.values());
+  }
+
+  // --------- App State ---------
+  let entries = loadEntries();
+  let userEvents = loadEvents();
+  let editingId = null;
+
+  // --------- Sliders UI ---------
+  function renderSliders(){
+    const wrap = $('#sliders');
+    wrap.innerHTML = '';
+    EMOTIONS.forEach(([emo, name]) => {
+      const id = 's_'+name;
+      const row = document.createElement('div');
+      row.className = 'sliderrow';
+      row.innerHTML = `
+        <div class="top">
+          <div class="name"><span style="font-size:20px">${emo}</span> ${name}</div>
+          <div class="val pill" id="${id}_val">3</div>
+        </div>
+        <input type="range" id="${id}" min="1" max="5" step="1" value="3" />
+        <div class="ticks"><span>1</span><span>5</span></div>
+      `;
+      wrap.appendChild(row);
+      const slider = row.querySelector('#'+id);
+      const val = row.querySelector('#'+id+'_val');
+      slider.addEventListener('input', () => val.textContent = slider.value);
+    });
+  }
+
+  function setFormNow(){
+    const n = new Date();
+    $('#date').value = formatDate(n);
+    $('#time').value = formatTime(n);
+    $('#notes').value = '';
+    EMOTIONS.forEach(([_, name]) => {
+      const s = $('#s_'+name);
+      if (s) s.value = 3;
+      const v = $('#s_'+name+'_val');
+      if (v) v.textContent = '3';
+    });
+    editingId = null;
+    $('#saveBtn').textContent = 'Add Entry';
+  }
+
+  // --------- Render Entry Lists ---------
+  function renderRecent(){
+    const list = $('#recentList');
+    const empty = $('#emptyRecent');
+    list.innerHTML = '';
+    if (!entries.length) { empty.style.display='block'; return; }
+    empty.style.display='none';
+    entries.forEach(e => list.appendChild(entryItem(e)));
+  }
+  function renderHistoryFor(dateStr){
+    const list = $('#histList');
+    const empty = $('#emptyHist');
+    list.innerHTML = '';
+    const arr = entries.filter(e => dailyKey(e.iso) === dateStr);
+    if (!arr.length) { empty.style.display='block'; } else { empty.style.display='none'; arr.forEach(e => list.appendChild(entryItem(e))); }
+    renderEventsForDate(dateStr, $('#histEvents'), $('#emptyHistEvents'));
+  }
+  function entryItem(e){
+    const div = document.createElement('div');
+    div.className = 'item';
+    const chips = EMOTIONS.map(([emo, k]) => `<div class="chip"><span>${emo} ${k}</span><b>${e.emotions[k]}</b></div>`).join('');
+    div.innerHTML = `
+      <div class="meta">
+        <div>${toDisplay(e.iso)}</div>
+        <div class="controls">
+          <button class="btn small ghost edit">Edit</button>
+          <button class="btn small ghost ics">.ics</button>
+          <button class="btn small ghost del">Delete</button>
+        </div>
+      </div>
+      <div class="chips">${chips}</div>
+      ${e.notes ? `<div class="note">${e.notes.replace(/</g,'&lt;')}</div>` : ''}
+    `;
+    div.querySelector('.del').addEventListener('click', () => {
+      entries = entries.filter(x => x.id !== e.id);
+      saveEntries(entries);
+      renderRecent();
+      renderHistoryFor($('#histDate').value);
+      refreshCharts();
+    });
+    div.querySelector('.edit').addEventListener('click', () => {
+      const dt = new Date(e.iso);
+      $('#date').value = formatDate(dt);
+      $('#time').value = formatTime(dt);
+      $('#notes').value = e.notes;
+      EMOTIONS.forEach(([_, k]) => {
+        const s = $('#s_'+k); const v = $('#s_'+k+'_val');
+        s.value = e.emotions[k]; v.textContent = String(e.emotions[k]);
+      });
+      editingId = e.id;
+      $('#saveBtn').textContent = 'Save Changes';
+      switchTab('log');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    div.querySelector('.ics').addEventListener('click', () => {
+      const ics = entryToICS(e);
+      const dt = new Date(e.iso);
+      download(`mood-entry-${formatDate(dt)}-${formatTime(dt).replace(':','')}.ics`, ics, 'text/calendar');
+    });
+    return div;
+  }
+
+  // --------- Add/Save Entry ---------
+  function handleSave(){
+    const dt = parseLocalDateTime($('#date').value, $('#time').value);
+    const payload = {
+      id: editingId || uuid(),
+      iso: dt.toISOString(),
+      emotions: Object.fromEntries(EMOTIONS.map(([_,k]) => [k, Number($('#s_'+k).value)])),
+      notes: $('#notes').value.trim()
+    };
+    if (editingId) {
+      entries = entries.map(x => x.id === editingId ? payload : x);
+    } else {
+      entries.push(payload);
+    }
+    entries.sort((a,b) => +new Date(b.iso) - +new Date(a.iso));
+    saveEntries(entries);
+    setFormNow();
+    renderRecent();
+    renderHistoryFor($('#histDate').value);
+    refreshCharts();
+  }
+
+  // --------- Tabs ---------
+  function switchTab(name){
+    $$('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    $('#tab-log').style.display = (name==='log') ? '' : 'none';
+    $('#tab-history').style.display = (name==='history') ? '' : 'none';
+    $('#tab-calendar').style.display = (name==='calendar') ? '' : 'none';
+    $('#tab-trends').style.display = (name==='trends') ? '' : 'none';
+  }
+
+  // --------- Events / Calendar ---------
+  function getHolidayEventsAround(year){
+    return holidayMapForYears(year-1, year+1);
+  }
+  function allEvents(){
+    const calYears = [calYear-1, calYear, calYear+1];
+    const hols = holidayMapForYears(Math.min(...calYears), Math.max(...calYears));
+    return [...userEvents, ...hols];
+  }
+  function renderEventsForDate(dateStr, mount, emptyMount){
+    mount.innerHTML = '';
+    const events = allEvents().filter(ev => ev.date === dateStr).sort((a,b) => (a.time||'') < (b.time||'') ? -1 : 1);
+    if (!events.length){ emptyMount.style.display='block'; return; }
+    emptyMount.style.display='none';
+    events.forEach(ev => mount.appendChild(eventItem(ev)));
+  }
+  function eventItem(ev){
+    const div = document.createElement('div');
+    div.className = 'item';
+    const when = ev.time ? (ev.date + ' ' + ev.time) : ev.date;
+    div.innerHTML = `
+      <div class="meta">
+        <div>${ev.holiday ? '<span class="holtag">🎉 UK Holiday</span>' : ''}<b>${ev.title}</b></div>
+        <div class="pill">${when}</div>
+      </div>
+      ${ev.notes ? `<div class="note">${ev.notes.replace(/</g,'&lt;')}</div>` : ''}
+      <div class="controls" style="margin-top:6px;">
+        <button class="btn small ghost ics">.ics</button>
+        ${ev.holiday ? '' : '<button class="btn small ghost edit">Edit</button><button class="btn small ghost del">Delete</button>'}
+      </div>
+    `;
+    div.querySelector('.ics').addEventListener('click', () => {
+      download((ev.title.replace(/\\s+/g,'-') || 'event') + '.ics', customEventToICS(ev), 'text/calendar');
+    });
+    if (!ev.holiday) {
+      div.querySelector('.del').addEventListener('click', () => {
+        userEvents = userEvents.filter(x => x.id !== ev.id);
+        saveEvents(userEvents);
+        renderCalendar();
+        renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
+        refreshRangeEvents();
+      });
+      div.querySelector('.edit').addEventListener('click', () => {
+        $('#evTitle').value = ev.title;
+        $('#evDate').value = ev.date;
+        $('#evTime').value = ev.time || '';
+        $('#evNotes').value = ev.notes || '';
+        $('#evAdd').textContent = 'Save Changes';
+        $('#evAdd').dataset.editing = ev.id;
+      });
+    }
+    return div;
+  }
+
+  let calYear = new Date().getFullYear();
+  let calMonth = new Date().getMonth();
+  function setCalTitle(){
+    const dt = new Date(calYear, calMonth, 1);
+    const monthName = dt.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    $('#calTitle').textContent = monthName;
+  }
+  function renderDaynames(){
+    const dn = $('#calDaynames'); dn.innerHTML='';
+    const names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    names.forEach(n => {
+      const d = document.createElement('div'); d.className='cal-dayname'; d.textContent=n; dn.appendChild(d);
+    });
+  }
+  function renderCalendar(selectedDate = null){
+    setCalTitle();
+    renderDaynames();
+    const grid = $('#calGrid'); grid.innerHTML='';
+    const first = new Date(calYear, calMonth, 1);
+    const startOffset = (first.getDay()+6)%7;
+    const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+    const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+    const cells = [];
+    for (let i=0;i<startOffset;i++){ cells.push({ dim:true, date:new Date(calYear, calMonth-1, prevMonthDays-startOffset+i+1) }); }
+    for (let d=1; d<=daysInMonth; d++){ cells.push({ dim:false, date:new Date(calYear, calMonth, d) }); }
+    while (cells.length % 7 !== 0) cells.push({ dim:true, date:new Date(calYear, calMonth+1, cells.length % 7 + 1) });
+
+    const events = allEvents();
+    const byDate = events.reduce((m, ev) => { (m[ev.date] ||= []).push(ev); return m; }, {});
+
+    cells.forEach(c => {
+      const dstr = formatDate(c.date);
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell' + (c.dim ? ' dim' : '');
+      const evs = (byDate[dstr]||[]).slice().sort((a,b) => (a.holiday? -1:0) - (b.holiday? -1:0));
+      const dots = evs.map(ev => `<span class="dot ${ev.holiday?'hol':''}" title="${ev.title}"></span>`).join('');
+      cell.innerHTML = `
+        <div class="cal-date"><span>${c.date.getDate()}</span><span>${dots}</span></div>
+        <div class="eventlist">${evs.slice(0,2).map(ev => `<div class="ev">${ev.holiday?'<span class="holtag">🎉</span>':''}${ev.title}</div>`).join('')}</div>
+      `;
+      cell.addEventListener('click', () => {
+        renderEventsForDate(dstr, $('#calEvents'), $('#calEventsEmpty'));
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  function handleAddEvent(){
+    const idEditing = $('#evAdd').dataset.editing || null;
+    const title = ($('#evTitle').value || '').trim();
+    const date = $('#evDate').value;
+    if (!title || !date){ alert('Please enter at least a title and date.'); return; }
+    const time = $('#evTime').value || null;
+    const notes = $('#evNotes').value || '';
+    if (idEditing){
+      userEvents = userEvents.map(e => e.id === idEditing ? { ...e, title, date, time, notes } : e);
+      $('#evAdd').textContent = 'Add Event';
+      delete $('#evAdd').dataset.editing;
+    } else {
+      userEvents.push({ id: uuid(), title, date, time, notes, holiday:false });
+    }
+    userEvents.sort((a,b) => (a.date + (a.time||'')) < (b.date + (b.time||'')) ? -1 : 1);
+    saveEvents(userEvents);
+    $('#evTitle').value=''; $('#evDate').value=''; $('#evTime').value=''; $('#evNotes').value='';
+    renderCalendar();
+    renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
+    refreshRangeEvents();
+  }
+
+  // --------- Trends / Charts ---------
+  let lineChart, barChart, radarChart;
+
+  function setRangeTo(days){
+    const now = new Date();
+    $('#rangeEnd').value = formatDate(now);
+    $('#rangeStart').value = formatDate(new Date(now.getTime() - (days-1)*24*60*60*1000));
+    refreshCharts();
+  }
+  function setRangeAll(){
+    const pool = entries.length ? entries : [{iso:new Date().toISOString()}];
+    const min = entries.reduce((m,e)=> Math.min(m, +new Date(e.iso)), +new Date(pool[0].iso));
+    $('#rangeStart').value = formatDate(new Date(min));
+    $('#rangeEnd').value = formatDate(new Date());
+    refreshCharts();
+  }
+
+  function refreshRangeEvents(){
+    const start = parseLocalDateTime($('#rangeStart').value || '1970-01-01', '00:00');
+    const end = parseLocalDateTime($('#rangeEnd').value || '2999-12-31', '23:59');
+    const events = allEvents().filter(ev => {
+      const dt = parseLocalDateTime(ev.date, ev.time || '00:00');
+      return dt >= start && dt <= end;
+    }).sort((a,b) => (a.date + (a.time||'')) < (b.date + (b.time||'')) ? -1 : 1);
+    const mount = $('#rangeEvents');
+    const empty = $('#rangeEventsEmpty');
+    mount.innerHTML = '';
+    if (!events.length){ empty.style.display='block'; return; }
+    empty.style.display='none';
+    events.forEach(ev => mount.appendChild(eventItem(ev)));
+  }
+
+  function refreshCharts(){
+    const start = parseLocalDateTime($('#rangeStart').value || '1970-01-01', '00:00');
+    const end = parseLocalDateTime($('#rangeEnd').value || '2999-12-31', '23:59');
+    const days = eachDay(start, end);
+    const grouped = {};
+    for (const e of entries) {
+      const dkey = dailyKey(e.iso);
+      const dt = new Date(e.iso);
+      if (dt>=start && dt<=end) {
+        if (!grouped[dkey]) grouped[dkey] = [];
+        grouped[dkey].push(e);
+      }
+    }
+    const lineData = days.map(d => {
+      const key = formatDate(d);
+      const arr = grouped[key] || [];
+      const obj = { date: key, count: arr.length };
+      if (!arr.length) {
+        EMOTIONS.forEach(([_,k]) => obj[k] = null);
+      } else {
+        EMOTIONS.forEach(([_,k]) => {
+          const mean = arr.reduce((sum, e) => sum + (e.emotions[k]||0), 0) / arr.length;
+          obj[k] = Number(mean.toFixed(2));
+        });
+      }
+      return obj;
+    });
+    const entriesPerDay = lineData.map(d => ({ date: d.date, count: d.count }));
+    const radar = EMOTIONS.map(([emo,k]) => {
+      let sum=0,n=0;
+      entries.forEach(e => {
+        const dt = new Date(e.iso);
+        if (dt>=start && dt<=end) { sum += e.emotions[k]||0; n++; }
+      });
+      return { label: `${emo} ${k}`, value: n? Number((sum/n).toFixed(2)) : 0 };
+    });
+
+    const labels = lineData.map(d => d.date);
+    const datasets = EMOTIONS.map(([emo,k],i) => ({
+      label: `${emo} ${k}`,
+      data: lineData.map(d => d[k]),
+      spanGaps: true,
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+    }));
+
+    const ctxL = $('#lineChart').getContext('2d');
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(ctxL, {
+      type: 'line',
+      data: { labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 1, max: 5 } }, plugins: { legend: { labels: { color: '#ddd' } } } }
+    });
+
+    const ctxB = $('#barChart').getContext('2d');
+    if (barChart) barChart.destroy();
+    barChart = new Chart(ctxB, {
+      type: 'bar',
+      data: { labels, datasets: [{ label:'Entries', data: entriesPerDay.map(d=>d.count) }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } } }
+    });
+
+    const ctxR = $('#radarChart').getContext('2d');
+    if (radarChart) radarChart.destroy();
+    radarChart = new Chart(ctxR, {
+      type: 'radar',
+      data: { labels: radar.map(r=>r.label), datasets:[{ label:'Average (1–5)', data: radar.map(r=>r.value) }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 1, max: 5 } }, plugins: { legend: { labels: { color: '#ddd' } } } }
+    });
+
+    refreshRangeEvents();
+  }
+
+  function eachDay(start, end){
+    const out=[];
+    const s = new Date(start.getFullYear(),start.getMonth(),start.getDate());
+    const e = new Date(end.getFullYear(),end.getMonth(),end.getDate());
+    for (let d=s; d<=e; d=new Date(d.getTime()+24*60*60*1000)) out.push(new Date(d));
+    return out;
+  }
+
+  // --------- Init ---------
+  renderSliders();
+  setFormNow();
+  renderRecent();
+  $('#histDate').value = formatDate(new Date());
+  renderHistoryFor($('#histDate').value);
+
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendar();
+
+  (function setDefaultRange(){
+    const now = new Date();
+    $('#rangeEnd').value = formatDate(now);
+    $('#rangeStart').value = formatDate(new Date(now.getTime() - 29*24*60*60*1000));
+  })();
+  refreshCharts();
+
+  $('#resetBtn').addEventListener('click', setFormNow);
+  $('#saveBtn').addEventListener('click', handleSave);
+  $('#histDate').addEventListener('change', e => renderHistoryFor(e.target.value));
+
+  $('#calPrev').addEventListener('click', () => { calMonth--; if (calMonth<0){ calMonth=11; calYear--; } renderCalendar(); });
+  $('#calNext').addEventListener('click', () => { calMonth++; if (calMonth>11){ calMonth=0; calYear++; } renderCalendar(); });
+  $('#evAdd').addEventListener('click', handleAddEvent);
+  $('#evExport').addEventListener('click', () => download('custom-events.json', JSON.stringify(userEvents,null,2), 'application/json'));
+  $('#evImport').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        if (Array.isArray(data)) {
+          const map = new Map(); [...userEvents, ...data].forEach(x => map.set(x.id, x));
+          userEvents = Array.from(map.values()).sort((a,b) => (a.date+(a.time||'')) < (b.date+(b.time||'')) ? -1 : 1);
+          saveEvents(userEvents);
+          renderCalendar();
+          renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
+          refreshRangeEvents();
+        }
+      } catch { alert('Invalid JSON.'); }
+    };
+    reader.readAsText(file);
+  });
+
+  $('#btn7').addEventListener('click', () => setRangeTo(7));
+  $('#btn30').addEventListener('click', () => setRangeTo(30));
+  $('#btnAll').addEventListener('click', setRangeAll);
+  $('#rangeStart').addEventListener('change', refreshCharts);
+  $('#rangeEnd').addEventListener('change', refreshCharts);
+  $('#btnExport').addEventListener('click', () => download('mood-entries.json', JSON.stringify(entries,null,2), 'application/json'));
+  $('#importFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        if (Array.isArray(data)) {
+          const map = new Map(); [...entries, ...data].forEach(x => map.set(x.id, x));
+          entries = Array.from(map.values()).sort((a,b)=>+new Date(b.iso) - +new Date(a.iso));
+          saveEntries(entries);
+          renderRecent(); renderHistoryFor($('#histDate').value); refreshCharts();
+        }
+      } catch { alert('Invalid JSON.'); }
+    };
+    reader.readAsText(file);
+  });
+
+  $$('.tabbtn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js');
+    });
+  }
+</script>
+</body>
+
+</html>
