@@ -1,10 +1,9 @@
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Emotion Tracker (One‑file) — v2 with Calendar</title>
+  <title>Emotion Tracker (One-file v4)</title>
   <style>
     :root { --bg:#0b0b0e; --panel:#121216; --panel2:#16161b; --text:#eaeaf0; --muted:#a3a3b2; --border:#2a2a33; --accent:#7c7cff; --good:#6ee7b7; --warn:#fbbf24; }
     * { box-sizing: border-box; }
@@ -13,7 +12,7 @@
     h1 { font-size: 26px; margin: 0 0 6px; }
     p.lead { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
     .rem { background: #16161b; border: 1px dashed var(--border); padding: 8px 12px; border-radius: 10px; color: var(--muted); font-size: 13px; }
-    .tabs { display: grid; grid-template-columns: repeat(4, max-content); gap: 8px; background: var(--panel2); padding: 6px; border-radius: 12px; width: max-content; }
+    .tabs { display: grid; grid-template-columns: repeat(5, max-content); gap: 8px; background: var(--panel2); padding: 6px; border-radius: 12px; width: max-content; }
     .tabbtn { border: 1px solid transparent; padding: 6px 10px; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
     .tabbtn.active { background: var(--panel); color: var(--text); border-color: var(--border); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
     .grid { display: grid; gap: 16px; }
@@ -25,7 +24,7 @@
     .cc { padding: 14px; }
     .cf { padding: 12px 14px; border-top: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap: wrap;}
     label { font-size: 13px; color: var(--text); display:block; margin-bottom:6px; }
-    input[type="date"], input[type="time"], input[type="file"], input[type="text"], textarea, select {
+    input[type="date"], input[type="time"], input[type="file"], input[type="text"], textarea, select, input[type="number"] {
       width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; outline: none;
     }
     textarea { min-height: 110px; resize: vertical; }
@@ -47,17 +46,14 @@
     .note { margin-top: 8px; white-space: pre-wrap; }
     .controls{ display:flex; gap:6px; flex-wrap: wrap; }
     .muted { color: var(--muted); font-size: 12px; }
-    .charts { display:grid; gap:16px; grid-template-columns: 1fr; }
-    @media (min-width: 1100px) { .charts { grid-template-columns: 2fr 1fr; } }
-    canvas { background: #0f0f14; border: 1px solid var(--border); border-radius: 12px; padding: 8px; }
-    a.link { color: #a8a8ff; text-decoration: none; }
     .pill { font-size: 12px; color: var(--muted); }
+    canvas { background: #0f0f14; border: 1px solid var(--border); border-radius: 12px; padding: 8px; }
     /* Calendar */ 
     .cal-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
     .cal-title{ font-weight:700; }
     .cal-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
     .cal-dayname{ text-align:center; font-size:12px; color:var(--muted); padding:6px 0; }
-    .cal-cell{ border:1px solid var(--border); border-radius:10px; min-height:78px; padding:6px; background:var(--panel2); }
+    .cal-cell{ border:1px solid var(--border); border-radius:10px; min-height:78px; padding:6px; background: var(--panel2); }
     .cal-cell.dim{ opacity:.5; }
     .cal-date{ font-size:12px; color: var(--muted); display:flex; align-items:center; justify-content:space-between;}
     .dot{ width:6px; height:6px; background: var(--good); border-radius: 100%; display:inline-block; }
@@ -65,24 +61,29 @@
     .eventlist{ margin-top:8px; display:flex; flex-direction:column; gap:4px; }
     .ev{ font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .ev .holtag{ color: var(--warn); margin-right:6px; }
+    .group { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .group-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .group-title { font-weight: 700; }
+    .group-body { padding: 12px 14px; display:grid; gap:12px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="manifest" href="manifest.webmanifest">
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="wrap">
     <h1>Emotion Tracker</h1>
     <p class="lead">Log emotions (1–5) with notes, multiple times per day. Everything saves locally on your device.</p>
-    <div class="rem">Before installing updates or changing files, export a backup: <b>Trends → Export JSON</b>. (I'll remind you.)</div>
+    <div class="rem">Before updating the app, export backups: <b>Trends → Export Entries JSON</b> and <b>Calendar → Export Events JSON</b>.</div>
 
     <div class="tabs" style="margin-top:10px;">
       <button class="tabbtn active" data-tab="log">Log</button>
       <button class="tabbtn" data-tab="history">History</button>
       <button class="tabbtn" data-tab="calendar">Calendar</button>
       <button class="tabbtn" data-tab="trends">Trends</button>
+      <button class="tabbtn" data-tab="search">Search</button>
     </div>
 
-    <!-- LOG TAB -->
+    <!-- LOG -->
     <section id="tab-log">
       <div class="grid cols-3" style="margin-top:16px;">
         <div class="card">
@@ -92,13 +93,9 @@
               <div><label for="date">Date</label><input id="date" type="date"></div>
               <div><label for="time">Time</label><input id="time" type="time"></div>
             </div>
-
             <div class="sep"></div>
-
             <div id="sliders"></div>
-
             <div class="sep"></div>
-
             <label for="notes">Notes</label>
             <textarea id="notes" placeholder="Anything notable, triggers, context..."></textarea>
           </div>
@@ -121,7 +118,7 @@
       </div>
     </section>
 
-    <!-- HISTORY TAB -->
+    <!-- HISTORY -->
     <section id="tab-history" style="display:none; margin-top:16px;">
       <div class="grid cols-3">
         <div class="card">
@@ -152,7 +149,7 @@
       </div>
     </section>
 
-    <!-- CALENDAR TAB -->
+    <!-- CALENDAR -->
     <section id="tab-calendar" style="display:none; margin-top:16px;">
       <div class="grid cols-3">
         <div class="card" style="grid-column: span 2;">
@@ -204,20 +201,29 @@
       </div>
     </section>
 
-    <!-- TRENDS TAB -->
+    <!-- TRENDS -->
     <section id="tab-trends" style="display:none; margin-top:16px;">
       <div class="grid cols-3">
         <div class="card">
           <div class="ch"><h3>Range</h3></div>
           <div class="cc">
             <div class="row">
+              <div><label>Start</label><input id="rangeStart" type="date"></div>
+              <div><label>End</label><input id="rangeEnd" type="date"></div>
+            </div>
+            <div class="sep"></div>
+            <label>Group by</label>
+            <div class="row">
               <div>
-                <label>Start</label>
-                <input id="rangeStart" type="date">
+                <select id="groupMode">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly (Mon–Sun)</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom">Custom N days</option>
+                </select>
               </div>
               <div>
-                <label>End</label>
-                <input id="rangeEnd" type="date">
+                <input id="groupN" type="number" min="2" max="60" step="1" placeholder="e.g., 14" style="display:none" />
               </div>
             </div>
             <div class="sep"></div>
@@ -229,8 +235,11 @@
             <div class="sep"></div>
             <div class="controls">
               <button class="btn small ghost" id="btnExport">Export Entries JSON</button>
+              <button class="btn small ghost" id="btnExportAll">Export ALL (entries + events)</button>
               <label class="btn small ghost" for="importFile">Import Entries JSON</label>
               <input id="importFile" type="file" accept="application/json" style="display:none" />
+              <label class="btn small ghost" for="importAllFile">Import ALL (bundle)</label>
+              <input id="importAllFile" type="file" accept="application/json" style="display:none" />
             </div>
             <div class="sep"></div>
             <div class="muted">Events during this range are shown below the charts.</div>
@@ -238,12 +247,12 @@
         </div>
 
         <div class="card" style="grid-column: span 2;">
-          <div class="ch"><h3>Daily Averages</h3></div>
+          <div class="ch"><h3>Averages by Period</h3></div>
           <div class="cc"><canvas id="lineChart" height="220"></canvas></div>
         </div>
 
         <div class="card">
-          <div class="ch"><h3>Entries per Day</h3></div>
+          <div class="ch"><h3>Entries per Period</h3></div>
           <div class="cc"><canvas id="barChart" height="220"></canvas></div>
         </div>
 
@@ -262,50 +271,75 @@
       </div>
     </section>
 
-    <p class="muted" style="margin-top:14px;">Data is stored locally on your device (localStorage). You can clear it anytime via your browser settings.</p>
+    <!-- SEARCH -->
+    <section id="tab-search" style="display:none; margin-top:16px;">
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="ch"><h3>Find logs by date range</h3></div>
+          <div class="cc">
+            <div class="row">
+              <div><label>Start</label><input id="srchStart" type="date"></div>
+              <div><label>End</label><input id="srchEnd" type="date"></div>
+            </div>
+            <div class="sep"></div>
+            <div class="controls">
+              <button class="btn small ghost" id="srch7">Last 7d</button>
+              <button class="btn small ghost" id="srch30">Last 30d</button>
+              <button class="btn small ghost" id="srchAll">All time</button>
+              <button class="btn small" id="srchGo">Search</button>
+            </div>
+            <div class="sep"></div>
+            <div class="controls">
+              <button class="btn small ghost" id="srchExportJSON">Export results as JSON</button>
+              <button class="btn small ghost" id="srchExportPDF">Export results as PDF</button>
+            </div>
+            <div class="sep"></div>
+            <div class="muted">Shows all logs (with notes) and any events on those days.</div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+          <div class="ch"><h3>Results</h3></div>
+          <div class="cc">
+            <div id="srchResults" class="list"></div>
+            <div id="srchEmpty" class="muted">No logs found in this range.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="muted" style="margin-top:14px;">Data is stored locally on your device (localStorage).</p>
   </div>
 
 <script>
-  // --------- Data & Utilities ---------
+  // ===== Utilities & Data =====
   const EMOTIONS = [
     ['😊','Happy'], ['🤩','Excited'], ['😔','Lonely'], ['😏','Horny'],
     ['😫','Exhausted'], ['😨','Scared'], ['😐','Bored'], ['😟','Worried']
   ];
-  const LS_KEY = 'moodEntries.v1';
-  const EV_LS_KEY = 'customEvents.v1'; // user-created events
-  const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const LS_KEY='moodEntries.v1', EV_LS_KEY='customEvents.v1';
+  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+  const pad=n=>String(n).padStart(2,'0');
+  const formatDate=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const formatTime=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+  const toDisplay=ts=>new Date(ts).toLocaleString();
+  const dailyKey=iso=>formatDate(new Date(iso));
+  function parseLocalDateTime(dateStr,timeStr){ const [y,m,d]=(dateStr||'').split('-').map(Number); const [hh,mm]=(timeStr||'').split(':').map(Number); return new Date(y||1970,(m||1)-1,d||1,hh||0,mm||0,0); }
+  const uuid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+  function download(filename, content, mime='text/plain'){ const blob=new Blob([content],{type:mime+';charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
+  const esc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
 
-  function pad(n){ return String(n).padStart(2,'0'); }
-  function formatDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-  function formatTime(d){ return pad(d.getHours())+':'+pad(d.getMinutes()); }
-  function toDisplay(ts){ return new Date(ts).toLocaleString(); }
-  function dailyKey(iso){ const d = new Date(iso); return formatDate(d); }
-  function parseLocalDateTime(dateStr, timeStr){
-    const [y,m,d] = (dateStr||'').split('-').map(Number);
-    const [hh,mm] = (timeStr||'').split(':').map(Number);
-    return new Date(y||1970, (m||1)-1, d||1, hh||0, mm||0, 0);
-  }
-  function uuid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
-  function download(filename, content, mime='text/plain'){
-    const blob = new Blob([content], { type: mime+';charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  function loadEntries(){ try { return JSON.parse(localStorage.getItem(LS_KEY)||'[]'); } catch { return []; } }
+  function saveEntries(a){ localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+  function loadEvents(){ try { return JSON.parse(localStorage.getItem(EV_LS_KEY)||'[]'); } catch { return []; } }
+  function saveEvents(a){ localStorage.setItem(EV_LS_KEY, JSON.stringify(a)); }
 
-  function loadEntries(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } }
-  function saveEntries(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
-  function loadEvents(){ try { return JSON.parse(localStorage.getItem(EV_LS_KEY) || '[]'); } catch { return []; } }
-  function saveEvents(arr){ localStorage.setItem(EV_LS_KEY, JSON.stringify(arr)); }
-
+  // ICS helpers
   function entryToICS(e){
-    const dt = new Date(e.iso);
-    const dtEnd = new Date(dt.getTime() + 15*60*1000);
-    const fmt = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
-    const summary = 'Mood entry: ' + EMOTIONS.map(([emo,k]) => `${emo} ${k} ${e.emotions[k]}`).join(', ');
-    const description = 'Notes: ' + (e.notes || '(none)');
+    const dt=new Date(e.iso), dtEnd=new Date(dt.getTime()+15*60*1000);
+    const fmt=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+    const summary='Mood entry: '+EMOTIONS.map(([emo,k])=>`${emo} ${k} ${e.emotions[k]}`).join(', ');
+    const description='Notes: '+(e.notes||'(none)');
     return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Emotion Tracker//EN
@@ -315,16 +349,14 @@ DTSTAMP:${fmt(new Date())}
 DTSTART:${fmt(dt)}
 DTEND:${fmt(dtEnd)}
 SUMMARY:${summary}
-DESCRIPTION:${description.replace(/\\n/g,'\\\\n')}
+DESCRIPTION:${description.replace(/\n/g,'\\n')}
 END:VEVENT
 END:VCALENDAR`;
   }
-
   function customEventToICS(ev){
-    const dt = parseLocalDateTime(ev.date, ev.time || '00:00');
-    const dtEnd = new Date(dt.getTime() + 60*60*1000);
-    const fmt = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
-    const desc = (ev.notes || '') + (ev.holiday ? ' (UK Public Holiday)' : '');
+    const dt=parseLocalDateTime(ev.date,ev.time||'00:00'), dtEnd=new Date(dt.getTime()+60*60*1000);
+    const fmt=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+    const desc=(ev.notes||'')+(ev.holiday?' (UK Public Holiday)':'');
     return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Emotion Tracker//EN
@@ -334,541 +366,404 @@ DTSTAMP:${fmt(new Date())}
 DTSTART:${fmt(dt)}
 DTEND:${fmt(dtEnd)}
 SUMMARY:${ev.title}
-DESCRIPTION:${desc.replace(/\\n/g,'\\\\n')}
+DESCRIPTION:${desc.replace(/\n/g,'\\n')}
 END:VEVENT
 END:VCALENDAR`;
   }
 
-  // --------- UK Public Holidays (England & Wales) ---------
-  function easterSunday(year){
-    const a = year % 19;
-    const b = Math.floor(year / 100);
-    const c = year % 100;
-    const d = Math.floor(b / 4);
-    const e = b % 4;
-    const f = Math.floor((b + 8) / 25);
-    const g = Math.floor((b - f + 1) / 3);
-    const h = (19*a + b - d - g + 15) % 30;
-    const i = Math.floor(c / 4);
-    const k = c % 4;
-    const l = (32 + 2*e + 2*i - h - k) % 7;
-    const m = Math.floor((a + 11*h + 22*l) / 451);
-    const month = Math.floor((h + l - 7*m + 114) / 31);
-    const day = ((h + l - 7*m + 114) % 31) + 1;
-    return new Date(year, month - 1, day);
-  }
-  function firstMonday(year, month){
-    const d = new Date(year, month, 1);
-    const day = d.getDay();
-    const add = (8 - (day || 7)) % 7;
-    return new Date(year, month, 1 + add);
-  }
-  function lastMonday(year, month){
-    const d = new Date(year, month + 1, 0);
-    const day = d.getDay();
-    const sub = (day === 0 ? 6 : day - 1);
-    return new Date(year, month + 1, 0 - sub);
-  }
-  function observed(date){
-    const dow = date.getDay();
-    if (dow === 6) return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 2);
-    if (dow === 0) return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-    return date;
-  }
-  function ukHolidaysEW(year){
-    const arr = [];
-    const push = (title, d) => arr.push({ id: 'hol-' + year + '-' + title.replace(/\\s+/g,'-'), title, date: formatDate(d), time: null, notes: '', holiday: true });
-
-    const ny = observed(new Date(year, 0, 1));
-    push("New Year's Day", ny);
-
-    const easter = easterSunday(year);
-    const goodFriday = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() - 2);
-    const easterMon = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + 1);
-    push('Good Friday', goodFriday);
-    push('Easter Monday', easterMon);
-
-    push('Early May bank holiday', firstMonday(year, 4));
-    push('Spring bank holiday', lastMonday(year, 4));
-    push('Summer bank holiday', lastMonday(year, 7));
-
-    let xmas = new Date(year, 11, 25);
-    let boxing = new Date(year, 11, 26);
-    let xObs = observed(xmas);
-    let bObs = observed(boxing);
-    if (formatDate(xObs) === formatDate(bObs)) {
-      bObs = new Date(bObs.getFullYear(), bObs.getMonth(), bObs.getDate() + 1);
-    }
-    push('Christmas Day', xObs);
-    push('Boxing Day', bObs);
-
+  // UK holidays (England & Wales)
+  function easterSunday(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1; return new Date(y,month-1,day); }
+  function firstMonday(y,m){ const d=new Date(y,m,1), add=(8-(d.getDay()||7))%7; return new Date(y,m,1+add); }
+  function lastMonday(y,m){ const d=new Date(y,m+1,0), sub=(d.getDay()===0?6:d.getDay()-1); return new Date(y,m+1,0-sub); }
+  function observed(date){ const w=date.getDay(); if(w===6) return new Date(date.getFullYear(),date.getMonth(),date.getDate()+2); if(w===0) return new Date(date.getFullYear(),date.getMonth(),date.getDate()+1); return date; }
+  function ukHolidaysEW(y){
+    const arr=[], push=(title,d)=>arr.push({id:'hol-'+y+'-'+title.replace(/\s+/g,'-'), title, date:formatDate(d), time:null, notes:'', holiday:true});
+    push("New Year's Day", observed(new Date(y,0,1)));
+    const easter=easterSunday(y);
+    push('Good Friday', new Date(easter.getFullYear(),easter.getMonth(),easter.getDate()-2));
+    push('Easter Monday', new Date(easter.getFullYear(),easter.getMonth(),easter.getDate()+1));
+    push('Early May bank holiday', firstMonday(y,4));
+    push('Spring bank holiday', lastMonday(y,4));
+    push('Summer bank holiday', lastMonday(y,7));
+    let xObs=observed(new Date(y,11,25)), bObs=observed(new Date(y,11,26));
+    if(formatDate(xObs)===formatDate(bObs)) bObs=new Date(bObs.getFullYear(),bObs.getMonth(),bObs.getDate()+1);
+    push('Christmas Day', xObs); push('Boxing Day', bObs);
     return arr;
   }
-  function holidayMapForYears(fromYear, toYear){
-    const map = new Map();
-    for (let y=fromYear; y<=toYear; y++){
-      ukHolidaysEW(y).forEach(ev => {
-        const key = ev.date + '|' + (ev.title || '');
-        map.set(key, ev);
-      });
-    }
-    return Array.from(map.values());
-  }
+  function holidayMapForYears(from,to){ const map=new Map(); for(let y=from;y<=to;y++){ ukHolidaysEW(y).forEach(ev=>map.set(ev.date+'|'+ev.title,ev)); } return Array.from(map.values()); }
 
-  // --------- App State ---------
-  let entries = loadEntries();
-  let userEvents = loadEvents();
-  let editingId = null;
+  // ===== App State =====
+  let entries=loadEntries(), userEvents=loadEvents(), editingId=null, srchData=null;
 
-  // --------- Sliders UI ---------
+  // ===== UI Builders =====
   function renderSliders(){
-    const wrap = $('#sliders');
-    wrap.innerHTML = '';
-    EMOTIONS.forEach(([emo, name]) => {
-      const id = 's_'+name;
-      const row = document.createElement('div');
-      row.className = 'sliderrow';
-      row.innerHTML = `
-        <div class="top">
-          <div class="name"><span style="font-size:20px">${emo}</span> ${name}</div>
-          <div class="val pill" id="${id}_val">3</div>
-        </div>
-        <input type="range" id="${id}" min="1" max="5" step="1" value="3" />
-        <div class="ticks"><span>1</span><span>5</span></div>
-      `;
+    const wrap=$('#sliders'); wrap.innerHTML='';
+    EMOTIONS.forEach(([emo,name])=>{
+      const id='s_'+name;
+      const row=document.createElement('div'); row.className='sliderrow';
+      row.innerHTML=`<div class="top"><div class="name"><span style="font-size:20px">${emo}</span> ${name}</div><div class="val pill" id="${id}_val">3</div></div>
+                     <input type="range" id="${id}" min="1" max="5" step="1" value="3" />
+                     <div class="ticks"><span>1</span><span>5</span></div>`;
       wrap.appendChild(row);
-      const slider = row.querySelector('#'+id);
-      const val = row.querySelector('#'+id+'_val');
-      slider.addEventListener('input', () => val.textContent = slider.value);
+      const slider=row.querySelector('#'+id), val=row.querySelector('#'+id+'_val');
+      slider.addEventListener('input',()=>val.textContent=slider.value);
     });
   }
-
   function setFormNow(){
-    const n = new Date();
-    $('#date').value = formatDate(n);
-    $('#time').value = formatTime(n);
-    $('#notes').value = '';
-    EMOTIONS.forEach(([_, name]) => {
-      const s = $('#s_'+name);
-      if (s) s.value = 3;
-      const v = $('#s_'+name+'_val');
-      if (v) v.textContent = '3';
-    });
-    editingId = null;
-    $('#saveBtn').textContent = 'Add Entry';
+    const n=new Date(); $('#date').value=formatDate(n); $('#time').value=formatTime(n); $('#notes').value='';
+    EMOTIONS.forEach(([_,name])=>{ const s=$('#s_'+name), v=$('#s_'+name+'_val'); if(s) s.value=3; if(v) v.textContent='3'; });
+    editingId=null; $('#saveBtn').textContent='Add Entry';
   }
 
-  // --------- Render Entry Lists ---------
-  function renderRecent(){
-    const list = $('#recentList');
-    const empty = $('#emptyRecent');
-    list.innerHTML = '';
-    if (!entries.length) { empty.style.display='block'; return; }
-    empty.style.display='none';
-    entries.forEach(e => list.appendChild(entryItem(e)));
-  }
-  function renderHistoryFor(dateStr){
-    const list = $('#histList');
-    const empty = $('#emptyHist');
-    list.innerHTML = '';
-    const arr = entries.filter(e => dailyKey(e.iso) === dateStr);
-    if (!arr.length) { empty.style.display='block'; } else { empty.style.display='none'; arr.forEach(e => list.appendChild(entryItem(e))); }
-    renderEventsForDate(dateStr, $('#histEvents'), $('#emptyHistEvents'));
-  }
   function entryItem(e){
-    const div = document.createElement('div');
-    div.className = 'item';
-    const chips = EMOTIONS.map(([emo, k]) => `<div class="chip"><span>${emo} ${k}</span><b>${e.emotions[k]}</b></div>`).join('');
-    div.innerHTML = `
-      <div class="meta">
-        <div>${toDisplay(e.iso)}</div>
-        <div class="controls">
-          <button class="btn small ghost edit">Edit</button>
-          <button class="btn small ghost ics">.ics</button>
-          <button class="btn small ghost del">Delete</button>
-        </div>
-      </div>
-      <div class="chips">${chips}</div>
-      ${e.notes ? `<div class="note">${e.notes.replace(/</g,'&lt;')}</div>` : ''}
-    `;
-    div.querySelector('.del').addEventListener('click', () => {
-      entries = entries.filter(x => x.id !== e.id);
-      saveEntries(entries);
-      renderRecent();
-      renderHistoryFor($('#histDate').value);
-      refreshCharts();
-    });
-    div.querySelector('.edit').addEventListener('click', () => {
-      const dt = new Date(e.iso);
-      $('#date').value = formatDate(dt);
-      $('#time').value = formatTime(dt);
-      $('#notes').value = e.notes;
-      EMOTIONS.forEach(([_, k]) => {
-        const s = $('#s_'+k); const v = $('#s_'+k+'_val');
-        s.value = e.emotions[k]; v.textContent = String(e.emotions[k]);
-      });
-      editingId = e.id;
-      $('#saveBtn').textContent = 'Save Changes';
-      switchTab('log');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    div.querySelector('.ics').addEventListener('click', () => {
-      const ics = entryToICS(e);
-      const dt = new Date(e.iso);
-      download(`mood-entry-${formatDate(dt)}-${formatTime(dt).replace(':','')}.ics`, ics, 'text/calendar');
-    });
+    const div=document.createElement('div'); div.className='item';
+    const chips=EMOTIONS.map(([emo,k])=>`<div class="chip"><span>${emo} ${k}</span><b>${e.emotions[k]}</b></div>`).join('');
+    div.innerHTML=`<div class="meta"><div>${toDisplay(e.iso)}</div>
+      <div class="controls"><button class="btn small ghost edit">Edit</button><button class="btn small ghost ics">.ics</button><button class="btn small ghost del">Delete</button></div></div>
+      <div class="chips">${chips}</div>${e.notes?`<div class="note">${e.notes.replace(/</g,'&lt;')}</div>`:''}`;
+    div.querySelector('.del').addEventListener('click',()=>{ entries=entries.filter(x=>x.id!==e.id); saveEntries(entries); renderRecent(); renderHistoryFor($('#histDate').value); refreshCharts(); runRangeSearch(); });
+    div.querySelector('.edit').addEventListener('click',()=>{ const dt=new Date(e.iso); $('#date').value=formatDate(dt); $('#time').value=formatTime(dt); $('#notes').value=e.notes||''; EMOTIONS.forEach(([_,k])=>{ const s=$('#s_'+k), v=$('#s_'+k+'_val'); s.value=e.emotions[k]; v.textContent=String(e.emotions[k]); }); editingId=e.id; $('#saveBtn').textContent='Save Changes'; switchTab('log'); window.scrollTo({top:0,behavior:'smooth'}); });
+    div.querySelector('.ics').addEventListener('click',()=>{ const ics=entryToICS(e), dt=new Date(e.iso); download(`mood-entry-${formatDate(dt)}-${formatTime(dt).replace(':','')}.ics`, ics, 'text/calendar'); });
     return div;
   }
+  function renderRecent(){ const list=$('#recentList'), empty=$('#emptyRecent'); list.innerHTML=''; if(!entries.length){ empty.style.display='block'; return;} empty.style.display='none'; entries.forEach(e=>list.appendChild(entryItem(e))); }
+  function renderHistoryFor(dateStr){
+    const list=$('#histList'), empty=$('#emptyHist'); list.innerHTML='';
+    const arr=entries.filter(e=>dailyKey(e.iso)===dateStr);
+    if(!arr.length){ empty.style.display='block'; } else { empty.style.display='none'; arr.forEach(e=>list.appendChild(entryItem(e))); }
+    renderEventsForDate(dateStr,$('#histEvents'),$('#emptyHistEvents'));
+  }
 
-  // --------- Add/Save Entry ---------
+  // Save entry
   function handleSave(){
-    const dt = parseLocalDateTime($('#date').value, $('#time').value);
-    const payload = {
-      id: editingId || uuid(),
-      iso: dt.toISOString(),
-      emotions: Object.fromEntries(EMOTIONS.map(([_,k]) => [k, Number($('#s_'+k).value)])),
-      notes: $('#notes').value.trim()
-    };
-    if (editingId) {
-      entries = entries.map(x => x.id === editingId ? payload : x);
-    } else {
-      entries.push(payload);
-    }
-    entries.sort((a,b) => +new Date(b.iso) - +new Date(a.iso));
-    saveEntries(entries);
-    setFormNow();
-    renderRecent();
-    renderHistoryFor($('#histDate').value);
-    refreshCharts();
+    const dt=parseLocalDateTime($('#date').value,$('#time').value);
+    const payload={ id:editingId||uuid(), iso:dt.toISOString(), emotions:Object.fromEntries(EMOTIONS.map(([_,k])=>[k,Number($('#s_'+k).value)])), notes:$('#notes').value.trim() };
+    entries = editingId ? entries.map(x=>x.id===editingId?payload:x) : entries.concat(payload);
+    entries.sort((a,b)=>+new Date(b.iso)-+new Date(a.iso)); saveEntries(entries);
+    setFormNow(); renderRecent(); renderHistoryFor($('#histDate').value); refreshCharts(); runRangeSearch();
   }
 
-  // --------- Tabs ---------
+  // Tabs
   function switchTab(name){
-    $$('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-    $('#tab-log').style.display = (name==='log') ? '' : 'none';
-    $('#tab-history').style.display = (name==='history') ? '' : 'none';
-    $('#tab-calendar').style.display = (name==='calendar') ? '' : 'none';
-    $('#tab-trends').style.display = (name==='trends') ? '' : 'none';
+    $$('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+    $('#tab-log').style.display=(name==='log')?'':'none';
+    $('#tab-history').style.display=(name==='history')?'':'none';
+    $('#tab-calendar').style.display=(name==='calendar')?'':'none';
+    $('#tab-trends').style.display=(name==='trends')?'':'none';
+    $('#tab-search').style.display=(name==='search')?'':'none';
+    if(name==='trends') setTimeout(refreshCharts,0);
+    if(name==='search') setTimeout(runRangeSearch,0);
   }
+  $$('.tabbtn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 
-  // --------- Events / Calendar ---------
-  function getHolidayEventsAround(year){
-    return holidayMapForYears(year-1, year+1);
-  }
-  function allEvents(){
-    const calYears = [calYear-1, calYear, calYear+1];
-    const hols = holidayMapForYears(Math.min(...calYears), Math.max(...calYears));
-    return [...userEvents, ...hols];
-  }
-  function renderEventsForDate(dateStr, mount, emptyMount){
-    mount.innerHTML = '';
-    const events = allEvents().filter(ev => ev.date === dateStr).sort((a,b) => (a.time||'') < (b.time||'') ? -1 : 1);
-    if (!events.length){ emptyMount.style.display='block'; return; }
-    emptyMount.style.display='none';
-    events.forEach(ev => mount.appendChild(eventItem(ev)));
-  }
+  // ===== Calendar / Events =====
+  let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+  function allEvents(){ const years=[calYear-1,calYear,calYear+1]; const hols=holidayMapForYears(Math.min(...years),Math.max(...years)); return [...userEvents, ...hols]; }
   function eventItem(ev){
-    const div = document.createElement('div');
-    div.className = 'item';
-    const when = ev.time ? (ev.date + ' ' + ev.time) : ev.date;
-    div.innerHTML = `
-      <div class="meta">
-        <div>${ev.holiday ? '<span class="holtag">🎉 UK Holiday</span>' : ''}<b>${ev.title}</b></div>
-        <div class="pill">${when}</div>
-      </div>
-      ${ev.notes ? `<div class="note">${ev.notes.replace(/</g,'&lt;')}</div>` : ''}
-      <div class="controls" style="margin-top:6px;">
-        <button class="btn small ghost ics">.ics</button>
-        ${ev.holiday ? '' : '<button class="btn small ghost edit">Edit</button><button class="btn small ghost del">Delete</button>'}
-      </div>
-    `;
-    div.querySelector('.ics').addEventListener('click', () => {
-      download((ev.title.replace(/\\s+/g,'-') || 'event') + '.ics', customEventToICS(ev), 'text/calendar');
-    });
-    if (!ev.holiday) {
-      div.querySelector('.del').addEventListener('click', () => {
-        userEvents = userEvents.filter(x => x.id !== ev.id);
-        saveEvents(userEvents);
-        renderCalendar();
-        renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
-        refreshRangeEvents();
-      });
-      div.querySelector('.edit').addEventListener('click', () => {
-        $('#evTitle').value = ev.title;
-        $('#evDate').value = ev.date;
-        $('#evTime').value = ev.time || '';
-        $('#evNotes').value = ev.notes || '';
-        $('#evAdd').textContent = 'Save Changes';
-        $('#evAdd').dataset.editing = ev.id;
-      });
+    const div=document.createElement('div'); div.className='item'; const when=ev.time?(ev.date+' '+ev.time):ev.date;
+    div.innerHTML=`<div class="meta"><div>${ev.holiday?'<span class="holtag">🎉 UK Holiday</span> ':''}<b>${ev.title}</b></div><div class="pill">${when}</div></div>
+      ${ev.notes?`<div class="note">${ev.notes.replace(/</g,'&lt;')}</div>`:''}
+      <div class="controls" style="margin-top:6px;"><button class="btn small ghost ics">.ics</button>${ev.holiday?'':'<button class="btn small ghost edit">Edit</button><button class="btn small ghost del">Delete</button>'}</div>`;
+    div.querySelector('.ics').addEventListener('click',()=>download((ev.title.replace(/\s+/g,'-')||'event')+'.ics', customEventToICS(ev), 'text/calendar'));
+    if(!ev.holiday){
+      div.querySelector('.del').addEventListener('click',()=>{ userEvents=userEvents.filter(x=>x.id!==ev.id); saveEvents(userEvents); renderCalendar(); renderEventsForDate($('#histDate').value,$('#histEvents'),$('#emptyHistEvents')); refreshRangeEvents(); runRangeSearch(); });
+      div.querySelector('.edit').addEventListener('click',()=>{ $('#evTitle').value=ev.title; $('#evDate').value=ev.date; $('#evTime').value=ev.time||''; $('#evNotes').value=ev.notes||''; $('#evAdd').textContent='Save Changes'; $('#evAdd').dataset.editing=ev.id; });
     }
     return div;
   }
-
-  let calYear = new Date().getFullYear();
-  let calMonth = new Date().getMonth();
-  function setCalTitle(){
-    const dt = new Date(calYear, calMonth, 1);
-    const monthName = dt.toLocaleString(undefined, { month: 'long', year: 'numeric' });
-    $('#calTitle').textContent = monthName;
+  function renderEventsForDate(dateStr,mount,emptyMount){
+    mount.innerHTML=''; const evs=allEvents().filter(ev=>ev.date===dateStr).sort((a,b)=>(a.time||'')<(b.time||'')?-1:1);
+    if(!evs.length){ emptyMount.style.display='block'; return; }
+    emptyMount.style.display='none'; evs.forEach(ev=>mount.appendChild(eventItem(ev)));
   }
-  function renderDaynames(){
-    const dn = $('#calDaynames'); dn.innerHTML='';
-    const names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    names.forEach(n => {
-      const d = document.createElement('div'); d.className='cal-dayname'; d.textContent=n; dn.appendChild(d);
-    });
-  }
-  function renderCalendar(selectedDate = null){
-    setCalTitle();
-    renderDaynames();
-    const grid = $('#calGrid'); grid.innerHTML='';
-    const first = new Date(calYear, calMonth, 1);
-    const startOffset = (first.getDay()+6)%7;
-    const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-    const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
-    const cells = [];
-    for (let i=0;i<startOffset;i++){ cells.push({ dim:true, date:new Date(calYear, calMonth-1, prevMonthDays-startOffset+i+1) }); }
-    for (let d=1; d<=daysInMonth; d++){ cells.push({ dim:false, date:new Date(calYear, calMonth, d) }); }
-    while (cells.length % 7 !== 0) cells.push({ dim:true, date:new Date(calYear, calMonth+1, cells.length % 7 + 1) });
-
-    const events = allEvents();
-    const byDate = events.reduce((m, ev) => { (m[ev.date] ||= []).push(ev); return m; }, {});
-
-    cells.forEach(c => {
-      const dstr = formatDate(c.date);
-      const cell = document.createElement('div');
-      cell.className = 'cal-cell' + (c.dim ? ' dim' : '');
-      const evs = (byDate[dstr]||[]).slice().sort((a,b) => (a.holiday? -1:0) - (b.holiday? -1:0));
-      const dots = evs.map(ev => `<span class="dot ${ev.holiday?'hol':''}" title="${ev.title}"></span>`).join('');
-      cell.innerHTML = `
-        <div class="cal-date"><span>${c.date.getDate()}</span><span>${dots}</span></div>
-        <div class="eventlist">${evs.slice(0,2).map(ev => `<div class="ev">${ev.holiday?'<span class="holtag">🎉</span>':''}${ev.title}</div>`).join('')}</div>
-      `;
-      cell.addEventListener('click', () => {
-        renderEventsForDate(dstr, $('#calEvents'), $('#calEventsEmpty'));
-      });
+  function setCalTitle(){ const dt=new Date(calYear,calMonth,1); $('#calTitle').textContent=dt.toLocaleString(undefined,{month:'long',year:'numeric'}); }
+  function renderDaynames(){ const dn=$('#calDaynames'); dn.innerHTML=''; ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(n=>{ const d=document.createElement('div'); d.className='cal-dayname'; d.textContent=n; dn.appendChild(d); }); }
+  function renderCalendar(){
+    setCalTitle(); renderDaynames(); const grid=$('#calGrid'); grid.innerHTML='';
+    const first=new Date(calYear,calMonth,1), startOffset=(first.getDay()+6)%7, daysInMonth=new Date(calYear,calMonth+1,0).getDate(), prevMonthDays=new Date(calYear,calMonth,0).getDate();
+    const cells=[]; for(let i=0;i<startOffset;i++) cells.push({dim:true,date:new Date(calYear,calMonth-1,prevMonthDays-startOffset+i+1)});
+    for(let d=1; d<=daysInMonth; d++) cells.push({dim:false,date:new Date(calYear,calMonth,d)});
+    while(cells.length%7!==0) cells.push({dim:true,date:new Date(calYear,calMonth+1,cells.length%7+1)});
+    const byDate=allEvents().reduce((m,ev)=>{ (m[ev.date] ||= []).push(ev); return m; }, {});
+    cells.forEach(c=>{
+      const dstr=formatDate(c.date); const cell=document.createElement('div'); cell.className='cal-cell'+(c.dim?' dim':'');
+      const evs=(byDate[dstr]||[]).slice().sort((a,b)=>(a.holiday?-1:0)-(b.holiday?-1:0));
+      const dots=evs.map(ev=>`<span class="dot ${ev.holiday?'hol':''}" title="${ev.title}"></span>`).join('');
+      cell.innerHTML=`<div class="cal-date"><span>${c.date.getDate()}</span><span>${dots}</span></div><div class="eventlist">${evs.slice(0,2).map(ev=>`<div class="ev">${ev.holiday?'<span class="holtag">🎉</span>':''}${ev.title}</div>`).join('')}</div>`;
+      cell.addEventListener('click',()=>renderEventsForDate(dstr,$('#calEvents'),$('#calEventsEmpty')));
       grid.appendChild(cell);
     });
   }
-
   function handleAddEvent(){
-    const idEditing = $('#evAdd').dataset.editing || null;
-    const title = ($('#evTitle').value || '').trim();
-    const date = $('#evDate').value;
-    if (!title || !date){ alert('Please enter at least a title and date.'); return; }
-    const time = $('#evTime').value || null;
-    const notes = $('#evNotes').value || '';
-    if (idEditing){
-      userEvents = userEvents.map(e => e.id === idEditing ? { ...e, title, date, time, notes } : e);
-      $('#evAdd').textContent = 'Add Event';
-      delete $('#evAdd').dataset.editing;
-    } else {
-      userEvents.push({ id: uuid(), title, date, time, notes, holiday:false });
-    }
-    userEvents.sort((a,b) => (a.date + (a.time||'')) < (b.date + (b.time||'')) ? -1 : 1);
-    saveEvents(userEvents);
+    const idEditing=$('#evAdd').dataset.editing||null, title=($('#evTitle').value||'').trim(), date=$('#evDate').value; if(!title||!date){ alert('Please enter at least a title and date.'); return; }
+    const time=$('#evTime').value||null, notes=$('#evNotes').value||'';
+    if(idEditing){ userEvents=userEvents.map(e=>e.id===idEditing?{...e,title,date,time,notes}:e); $('#evAdd').textContent='Add Event'; delete $('#evAdd').dataset.editing; }
+    else { userEvents.push({id:uuid(), title, date, time, notes, holiday:false}); }
+    userEvents.sort((a,b)=>(a.date+(a.time||''))<(b.date+(b.time||''))?-1:1); saveEvents(userEvents);
     $('#evTitle').value=''; $('#evDate').value=''; $('#evTime').value=''; $('#evNotes').value='';
-    renderCalendar();
-    renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
-    refreshRangeEvents();
+    renderCalendar(); renderEventsForDate($('#histDate').value,$('#histEvents'),$('#emptyHistEvents')); refreshRangeEvents(); runRangeSearch();
   }
 
-  // --------- Trends / Charts ---------
+  // ===== Trends & Aggregations =====
   let lineChart, barChart, radarChart;
+  function eachDay(start,end){ const out=[], s=new Date(start.getFullYear(),start.getMonth(),start.getDate()), e=new Date(end.getFullYear(),end.getMonth(),end.getDate()); for(let d=s; d<=e; d=new Date(d.getTime()+86400000)) out.push(new Date(d)); return out; }
+  function setRangeTo(days){ const now=new Date(); $('#rangeEnd').value=formatDate(now); $('#rangeStart').value=formatDate(new Date(now.getTime()-(days-1)*86400000)); refreshCharts(); }
+  function setRangeAll(){ const pool=entries.length?entries:[{iso:new Date().toISOString()}]; const min=entries.reduce((m,e)=>Math.min(m,+new Date(e.iso)),+new Date(pool[0].iso)); $('#rangeStart').value=formatDate(new Date(min)); $('#rangeEnd').value=formatDate(new Date())); refreshCharts(); }
 
-  function setRangeTo(days){
-    const now = new Date();
-    $('#rangeEnd').value = formatDate(now);
-    $('#rangeStart').value = formatDate(new Date(now.getTime() - (days-1)*24*60*60*1000));
-    refreshCharts();
+  // ISO week helpers (Mon–Sun)
+  function isoWeekInfo(d0){
+    const d=new Date(Date.UTC(d0.getFullYear(), d0.getMonth(), d0.getDate()));
+    const day=(d.getUTCDay()+6)%7; // Mon=0
+    d.setUTCDate(d.getUTCDate()-day+3); // Thursday of this week
+    const thursYear=d.getUTCFullYear();
+    const week1=new Date(Date.UTC(thursYear,0,4));
+    const week=Math.round(((d - week1)/86400000 + ((week1.getUTCDay()+6)%7) + 1)/7);
+    return {year: thursYear, week};
   }
-  function setRangeAll(){
-    const pool = entries.length ? entries : [{iso:new Date().toISOString()}];
-    const min = entries.reduce((m,e)=> Math.min(m, +new Date(e.iso)), +new Date(pool[0].iso));
-    $('#rangeStart').value = formatDate(new Date(min));
-    $('#rangeEnd').value = formatDate(new Date());
-    refreshCharts();
-  }
-
-  function refreshRangeEvents(){
-    const start = parseLocalDateTime($('#rangeStart').value || '1970-01-01', '00:00');
-    const end = parseLocalDateTime($('#rangeEnd').value || '2999-12-31', '23:59');
-    const events = allEvents().filter(ev => {
-      const dt = parseLocalDateTime(ev.date, ev.time || '00:00');
-      return dt >= start && dt <= end;
-    }).sort((a,b) => (a.date + (a.time||'')) < (b.date + (b.time||'')) ? -1 : 1);
-    const mount = $('#rangeEvents');
-    const empty = $('#rangeEventsEmpty');
-    mount.innerHTML = '';
-    if (!events.length){ empty.style.display='block'; return; }
-    empty.style.display='none';
-    events.forEach(ev => mount.appendChild(eventItem(ev)));
+  function groupKey(date, mode, nDays, startDate){
+    if(mode==='daily'){ return formatDate(date); }
+    if(mode==='weekly'){ const {year,week}=isoWeekInfo(date); return `${year}-W${String(week).padStart(2,'0')}`; }
+    if(mode==='monthly'){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
+    // custom
+    const idx=Math.floor((date - startDate)/(nDays*86400000));
+    const binStart=new Date(startDate.getFullYear(),startDate.getMonth(),startDate.getDate()+idx*nDays);
+    const binEnd=new Date(binStart.getFullYear(),binStart.getMonth(),binStart.getDate()+nDays-1);
+    const label=`${binStart.getDate()} ${binStart.toLocaleString(undefined,{month:'short'})}–${binEnd.getDate()} ${binEnd.toLocaleString(undefined,{month:'short'})}`;
+    return `${String(idx).padStart(4,'0')} ${label}`;
   }
 
   function refreshCharts(){
-    const start = parseLocalDateTime($('#rangeStart').value || '1970-01-01', '00:00');
-    const end = parseLocalDateTime($('#rangeEnd').value || '2999-12-31', '23:59');
-    const days = eachDay(start, end);
-    const grouped = {};
-    for (const e of entries) {
-      const dkey = dailyKey(e.iso);
-      const dt = new Date(e.iso);
-      if (dt>=start && dt<=end) {
-        if (!grouped[dkey]) grouped[dkey] = [];
-        grouped[dkey].push(e);
-      }
+    const start=parseLocalDateTime($('#rangeStart').value||'1970-01-01','00:00');
+    const end=parseLocalDateTime($('#rangeEnd').value||'2999-12-31','23:59');
+    const mode=$('#groupMode').value;
+    const nDaysInput=$('#groupN'); const nDays=Number(nDaysInput.value)||7;
+    const startDay=new Date(start.getFullYear(),start.getMonth(),start.getDate());
+
+    const groups=new Map();
+    for(const e of entries){
+      const dt=new Date(e.iso);
+      if(dt<start || dt>end) continue;
+      const key=groupKey(new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()), mode, nDays, startDay);
+      if(!groups.has(key)) groups.set(key,{label:key, bucket:[], total:0, sums:Object.create(null)});
+      const g=groups.get(key); g.bucket.push(e); g.total++;
+      EMOTIONS.forEach(([_,k])=>{ g.sums[k]=(g.sums[k]||0)+(e.emotions[k]||0); });
     }
-    const lineData = days.map(d => {
-      const key = formatDate(d);
-      const arr = grouped[key] || [];
-      const obj = { date: key, count: arr.length };
-      if (!arr.length) {
-        EMOTIONS.forEach(([_,k]) => obj[k] = null);
-      } else {
-        EMOTIONS.forEach(([_,k]) => {
-          const mean = arr.reduce((sum, e) => sum + (e.emotions[k]||0), 0) / arr.length;
-          obj[k] = Number(mean.toFixed(2));
-        });
-      }
-      return obj;
-    });
-    const entriesPerDay = lineData.map(d => ({ date: d.date, count: d.count }));
-    const radar = EMOTIONS.map(([emo,k]) => {
-      let sum=0,n=0;
-      entries.forEach(e => {
-        const dt = new Date(e.iso);
-        if (dt>=start && dt<=end) { sum += e.emotions[k]||0; n++; }
+
+    const labels=Array.from(groups.keys()).sort();
+    const datasetByEmotion = {}; EMOTIONS.forEach(([_,k])=>datasetByEmotion[k]=[]);
+    const counts=[];
+    labels.forEach(key=>{
+      const g=groups.get(key);
+      counts.push(g.total);
+      EMOTIONS.forEach(([_,k])=>{
+        const avg = g.total ? Number((g.sums[k]/g.total).toFixed(2)) : null;
+        datasetByEmotion[k].push(avg);
       });
-      return { label: `${emo} ${k}`, value: n? Number((sum/n).toFixed(2)) : 0 };
     });
 
-    const labels = lineData.map(d => d.date);
-    const datasets = EMOTIONS.map(([emo,k],i) => ({
-      label: `${emo} ${k}`,
-      data: lineData.map(d => d[k]),
-      spanGaps: true,
-      borderWidth: 2,
-      fill: false,
-      tension: 0.3,
-    }));
-
-    const ctxL = $('#lineChart').getContext('2d');
-    if (lineChart) lineChart.destroy();
-    lineChart = new Chart(ctxL, {
-      type: 'line',
-      data: { labels, datasets },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 1, max: 5 } }, plugins: { legend: { labels: { color: '#ddd' } } } }
+    // Radar overall for full range
+    const radar=EMOTIONS.map(([emo,k])=>{
+      let sum=0,n=0;
+      entries.forEach(e=>{ const dt=new Date(e.iso); if(dt>=start&&dt<=end){ sum+=e.emotions[k]||0; n++; } });
+      return {label:`${emo} ${k}`, value:n?Number((sum/n).toFixed(2)):0};
     });
 
-    const ctxB = $('#barChart').getContext('2d');
-    if (barChart) barChart.destroy();
-    barChart = new Chart(ctxB, {
-      type: 'bar',
-      data: { labels, datasets: [{ label:'Entries', data: entriesPerDay.map(d=>d.count) }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ddd' } } } }
-    });
+    if(window.Chart){
+      const lineLabels=labels.map(l=>l.replace(/^\d{4}\s/,''));
+      const emotionSets=EMOTIONS.map(([emo,k])=>({ label:`${emo} ${k}`, data:datasetByEmotion[k], spanGaps:true, borderWidth:2, fill:false, tension:0.3 }));
+      const ctxL=$('#lineChart').getContext('2d'); if(lineChart) lineChart.destroy();
+      lineChart=new Chart(ctxL,{ type:'line', data:{ labels:lineLabels, datasets:emotionSets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{min:1,max:5} } } });
 
-    const ctxR = $('#radarChart').getContext('2d');
-    if (radarChart) radarChart.destroy();
-    radarChart = new Chart(ctxR, {
-      type: 'radar',
-      data: { labels: radar.map(r=>r.label), datasets:[{ label:'Average (1–5)', data: radar.map(r=>r.value) }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 1, max: 5 } }, plugins: { legend: { labels: { color: '#ddd' } } } }
-    });
+      const ctxB=$('#barChart').getContext('2d'); if(barChart) barChart.destroy();
+      barChart=new Chart(ctxB,{ type:'bar', data:{ labels:lineLabels, datasets:[{label:'Entries', data:counts}] }, options:{ responsive:true, maintainAspectRatio:false } });
+
+      const ctxR=$('#radarChart').getContext('2d'); if(radarChart) radarChart.destroy();
+      radarChart=new Chart(ctxR,{ type:'radar', data:{ labels:radar.map(r=>r.label), datasets:[{label:'Average (1–5)', data:radar.map(r=>r.value)}] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ r:{min:1,max:5} } } });
+    }
 
     refreshRangeEvents();
   }
 
-  function eachDay(start, end){
-    const out=[];
-    const s = new Date(start.getFullYear(),start.getMonth(),start.getDate());
-    const e = new Date(end.getFullYear(),end.getMonth(),end.getDate());
-    for (let d=s; d<=e; d=new Date(d.getTime()+24*60*60*1000)) out.push(new Date(d));
-    return out;
+  function refreshRangeEvents(){
+    const start=parseLocalDateTime($('#rangeStart').value)||new Date('1970-01-01T00:00:00');
+    const end=parseLocalDateTime($('#rangeEnd').value||'2999-12-31','23:59');
+    const events=allEvents().filter(ev=>{ const dt=parseLocalDateTime(ev.date,ev.time||'00:00'); return dt>=start && dt<=end; }).sort((a,b)=>(a.date+(a.time||''))<(b.date+(b.time||''))?-1:1);
+    const mount=$('#rangeEvents'), empty=$('#rangeEventsEmpty'); mount.innerHTML=''; if(!events.length){ empty.style.display='block'; return; } empty.style.display='none'; events.forEach(ev=>mount.appendChild(eventItem(ev)));
   }
 
-  // --------- Init ---------
-  renderSliders();
-  setFormNow();
-  renderRecent();
-  $('#histDate').value = formatDate(new Date());
-  renderHistoryFor($('#histDate').value);
+  // ===== Search (with JSON/PDF export) =====
+  function runRangeSearch(){
+    const start=parseLocalDateTime($('#srchStart').value||'1970-01-01','00:00');
+    const end=parseLocalDateTime($('#srchEnd').value||'2999-12-31','23:59');
+    const dayList=(function eachDay(start,end){ const out=[], s=new Date(start.getFullYear(),start.getMonth(),start.getDate()), e=new Date(end.getFullYear(),end.getMonth(),end.getDate()); for(let d=s; d<=e; d=new Date(d.getTime()+86400000)) out.push(new Date(d)); return out; })(start,end);
+    const results=$('#srchResults'), empty=$('#srchEmpty'); results.innerHTML='';
+    const byDateEntries={}, byDateEvents={};
+    entries.forEach(e=>{ const dt=new Date(e.iso); if(dt>=start&&dt<=end){ const k=formatDate(dt); (byDateEntries[k] ||= []).push(e); } });
+    allEvents().forEach(ev=>{ const dt=parseLocalDateTime(ev.date,ev.time||'00:00'); if(dt>=start&&dt<=end){ (byDateEvents[ev.date] ||= []).push(ev); } });
 
-  const now = new Date();
-  calYear = now.getFullYear();
-  calMonth = now.getMonth();
-  renderCalendar();
+    const daysOut=[]; let found=0;
+    dayList.forEach(d=>{
+      const key=formatDate(d);
+      const dayEntries=(byDateEntries[key]||[]).slice().sort((a,b)=>+new Date(a.iso)-+new Date(b.iso));
+      const dayEvents=(byDateEvents[key]||[]).slice().sort((a,b)=>(a.time||'')<(b.time||'')?-1:1);
+      if(!dayEntries.length && !dayEvents.length) return;
+      found++;
+      const block=document.createElement('div'); block.className='group';
+      block.innerHTML=`<div class="group-header"><div class="group-title">${key}</div><div class="pill">${dayEntries.length} log${dayEntries.length!==1?'s':''}${dayEvents.length?` · ${dayEvents.length} event${dayEvents.length!==1?'s':''}`:''}</div></div>
+                       <div class="group-body">${dayEntries.length?`<div><div class="pill" style="margin-bottom:6px;">Logs</div><div id="g-${key}-entries" class="list"></div></div>`:''}
+                       ${dayEvents.length?`<div><div class="pill" style="margin-bottom:6px;">Events</div><div id="g-${key}-events" class="list"></div></div>`:''}</div>`;
+      results.appendChild(block);
+      if(dayEntries.length){ const mE=block.querySelector(`#g-${esc(key)}-entries`); dayEntries.forEach(e=>mE.appendChild(entryItem(e))); }
+      if(dayEvents.length){ const mV=block.querySelector(`#g-${esc(key)}-events`); dayEvents.forEach(ev=>mV.appendChild(eventItem(ev))); }
+      daysOut.push({ date:key, entries:dayEntries.map(e=>({id:e.id, iso:e.iso, time:formatTime(new Date(e.iso)), notes:e.notes||'', emotions:Object.fromEntries(EMOTIONS.map(([_,k])=>[k,e.emotions[k]])) })), events:dayEvents.map(ev=>({id:ev.id, title:ev.title, date:ev.date, time:ev.time||null, notes:ev.notes||'', holiday:!!ev.holiday})) });
+    });
+    srchData={ range:{startISO:start.toISOString(), endISO:end.toISOString()}, generatedAt:new Date().toISOString(), days:daysOut };
+    empty.style.display=found?'none':'block';
+  }
 
-  (function setDefaultRange(){
-    const now = new Date();
-    $('#rangeEnd').value = formatDate(now);
-    $('#rangeStart').value = formatDate(new Date(now.getTime() - 29*24*60*60*1000));
-  })();
-  refreshCharts();
+  function exportSearchJSON(){ if(!srchData||!srchData.days.length){ alert('No results to export. Run a search first.'); return; } const s=srchData.range.startISO.slice(0,10).replace(/-/g,''); const e=srchData.range.endISO.slice(0,10).replace(/-/g,''); download(`mood-search-${s}-${e}.json`, JSON.stringify(srchData,null,2), 'application/json'); }
+  function exportSearchPDF(){
+    if(!srchData||!srchData.days.length){ alert('No results to export. Run a search first.'); return; }
+    if(!window.jspdf){ alert('PDF library not loaded. Please try again while online.'); return; }
+    const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:'pt',format:'a4'}); const margin=36, pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight(), width=pageW-margin*2; let y=margin;
+    function line(text,size=11,style='normal'){ doc.setFont('helvetica',style); doc.setFontSize(size); const lines=doc.splitTextToSize(text,width); for(const ln of lines){ if(y>pageH-margin){ doc.addPage(); y=margin; } doc.text(ln,margin,y); y+=size+5; } }
+    function spacer(h=8){ y+=h; if(y>pageH-margin){ doc.addPage(); y=margin; } }
+    function header(text){ doc.setFont('helvetica','bold'); doc.setFontSize(16); if(y>pageH-margin){ doc.addPage(); y=margin; } doc.text(text,margin,y); y+=22; }
+    function subhead(text){ doc.setFont('helvetica','bold'); doc.setFontSize(12); if(y>pageH-margin){ doc.addPage(); y=margin; } doc.text(text,margin,y); y+=16; }
+    const s=srchData.range.startISO.slice(0,10), e=srchData.range.endISO.slice(0,10);
+    header('Emotion Tracker — Range Report'); line(`Range: ${s} to ${e}`); line(`Generated: ${new Date().toLocaleString()}`); spacer(10);
+    srchData.days.forEach(day=>{ subhead(day.date); if(day.entries?.length){ line('Logs:',11,'bold'); day.entries.forEach(en=>{ line(`• ${en.time}`,11,'bold'); const emSummary=Object.entries(en.emotions).map(([k,v])=>{ const emo=EMOTIONS.find(([_,name])=>name===k)?.[0]||''; return `${emo} ${k} ${v}`; }).join(' | '); line(emSummary); if(en.notes) line(`Notes: ${en.notes}`); spacer(6); }); }
+      if(day.events?.length){ line('Events:',11,'bold'); day.events.forEach(ev=>{ const flag=ev.holiday?' (UK Public Holiday)':''; const when=ev.time?`${ev.date} ${ev.time}`:ev.date; line(`• ${ev.title}${flag} — ${when}`); if(ev.notes) line(`  Notes: ${ev.notes}`); }); } spacer(10); });
+    const fname=`mood-search-${s.replace(/-/g,'')}-${e.replace(/-/g,'')}.pdf`; doc.save(fname);
+  }
 
-  $('#resetBtn').addEventListener('click', setFormNow);
-  $('#saveBtn').addEventListener('click', handleSave);
-  $('#histDate').addEventListener('change', e => renderHistoryFor(e.target.value));
+  // ===== Export ALL (entries + events) =====
+  function exportAllBundle(){
+    const ts = new Date();
+    const stamp = ts.toISOString().replace(/[-:T.Z]/g,'').slice(0,14); // yyyymmddHHMMSS
+    const bundle = {
+      meta: {
+        app: 'Emotion Tracker',
+        version: 'onefile-v4',
+        generatedAt: ts.toISOString(),
+        note: 'Restore by using Import ALL (bundle) in Trends.'
+      },
+      entries: entries,
+      events: userEvents
+    };
+    download(`mood-backup-${stamp}.json`, JSON.stringify(bundle,null,2), 'application/json');
+  }
 
-  $('#calPrev').addEventListener('click', () => { calMonth--; if (calMonth<0){ calMonth=11; calYear--; } renderCalendar(); });
-  $('#calNext').addEventListener('click', () => { calMonth++; if (calMonth>11){ calMonth=0; calYear++; } renderCalendar(); });
-  $('#evAdd').addEventListener('click', handleAddEvent);
-  $('#evExport').addEventListener('click', () => download('custom-events.json', JSON.stringify(userEvents,null,2), 'application/json'));
-  $('#evImport').addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
+  // ===== Import ALL (bundle) =====
+  function handleImportAll(e){
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const data = JSON.parse(String(reader.result));
-        if (Array.isArray(data)) {
-          const map = new Map(); [...userEvents, ...data].forEach(x => map.set(x.id, x));
-          userEvents = Array.from(map.values()).sort((a,b) => (a.date+(a.time||'')) < (b.date+(b.time||'')) ? -1 : 1);
-          saveEvents(userEvents);
-          renderCalendar();
-          renderEventsForDate($('#histDate').value, $('#histEvents'), $('#emptyHistEvents'));
-          refreshRangeEvents();
-        }
-      } catch { alert('Invalid JSON.'); }
-    };
-    reader.readAsText(file);
-  });
 
-  $('#btn7').addEventListener('click', () => setRangeTo(7));
-  $('#btn30').addEventListener('click', () => setRangeTo(30));
+        // Detect shapes:
+        // 1) { meta, entries:[], events:[] }
+        // 2) { entries:[], events:[] }
+        // 3) just an array of entries or events (we'll try to guess)
+        let importedEntries = [];
+        let importedEvents = [];
+
+        if(Array.isArray(data)){
+          const looksEntry = obj => obj && typeof obj==='object' && ('iso' in obj) && ('emotions' in obj);
+          const looksEvent = obj => obj && typeof obj==='object' && ('date' in obj) && ('title' in obj);
+          if(data.some(looksEntry)) importedEntries = data.filter(looksEntry);
+          if(data.some(looksEvent)) importedEvents = data.filter(looksEvent);
+        } else if (data && typeof data === 'object'){
+          if(Array.isArray(data.entries)) importedEntries = data.entries;
+          if(Array.isArray(data.events)) importedEvents = data.events;
+        }
+
+        // Basic sanitation and ids
+        importedEntries = importedEntries.map(en=>{
+          const id = en.id || uuid();
+          const iso = en.iso || new Date().toISOString();
+          const emotions = en.emotions || {};
+          const notes = typeof en.notes==='string' ? en.notes : '';
+          return { id, iso, emotions, notes };
+        });
+
+        importedEvents = importedEvents.map(ev=>{
+          const id = ev.id || uuid();
+          const title = ev.title || 'Event';
+          const date = ev.date || formatDate(new Date());
+          const time = ev.time || null;
+          const notes = typeof ev.notes==='string' ? ev.notes : '';
+          const holiday = !!ev.holiday;
+          return { id, title, date, time, notes, holiday };
+        });
+
+        // Merge + dedupe by id
+        const entryMap = new Map(entries.map(x=>[x.id,x]));
+        importedEntries.forEach(en=>entryMap.set(en.id,en));
+        entries = Array.from(entryMap.values()).sort((a,b)=>+new Date(b.iso)-+new Date(a.iso));
+        saveEntries(entries);
+
+        const eventMap = new Map(userEvents.map(x=>[x.id,x]));
+        importedEvents.forEach(ev=>eventMap.set(ev.id,ev));
+        userEvents = Array.from(eventMap.values()).sort((a,b)=>(a.date+(a.time||''))<(b.date+(b.time||''))?-1:1);
+        saveEvents(userEvents);
+
+        // Refresh UI
+        renderRecent();
+        renderHistoryFor($('#histDate').value);
+        renderCalendar();
+        refreshRangeEvents();
+        refreshCharts();
+        runRangeSearch();
+
+        alert(`Import complete.\nEntries merged: ${importedEntries.length}\nEvents merged: ${importedEvents.length}`);
+      } catch (err){
+        console.error(err);
+        alert('Invalid JSON file. Please select a backup created by Export ALL.');
+      } finally {
+        // reset input so same file can be re-imported if desired
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(f);
+  }
+
+  // ===== Init =====
+  renderSliders(); setFormNow(); renderRecent(); $('#histDate').value=formatDate(new Date()); renderHistoryFor($('#histDate').value);
+  const now=new Date(); calYear=now.getFullYear(); calMonth=now.getMonth(); renderCalendar();
+  (function setDefaultRange(){ const n=new Date(); $('#rangeEnd').value=formatDate(n); $('#rangeStart').value=formatDate(new Date(n.getTime()-29*86400000)); })(); refreshCharts();
+  (function setSearchDefault(){ const n=new Date(); $('#srchEnd').value=formatDate(n); $('#srchStart').value=formatDate(new Date(n.getTime()-6*86400000)); })(); runRangeSearch();
+
+  // Buttons
+  $('#resetBtn').addEventListener('click', setFormNow);
+  $('#saveBtn').addEventListener('click', handleSave);
+  $('#histDate').addEventListener('change', e=>renderHistoryFor(e.target.value));
+  $('#calPrev').addEventListener('click', ()=>{ calMonth--; if(calMonth<0){calMonth=11; calYear--; } renderCalendar(); });
+  $('#calNext').addEventListener('click', ()=>{ calMonth++; if(calMonth>11){calMonth=0; calYear++; } renderCalendar(); });
+  $('#evAdd').addEventListener('click', handleAddEvent);
+  $('#evExport').addEventListener('click', ()=>download('custom-events.json', JSON.stringify(userEvents,null,2), 'application/json'));
+  $('#evImport').addEventListener('change',(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const data=JSON.parse(String(r.result)); if(Array.isArray(data)){ const map=new Map(); [...userEvents,...data].forEach(x=>map.set(x.id||uuid(),{...x,id:x.id||uuid()})); userEvents=Array.from(map.values()).sort((a,b)=>(a.date+(a.time||''))<(b.date+(b.time||''))?-1:1); saveEvents(userEvents); renderCalendar(); renderEventsForDate($('#histDate').value,$('#histEvents'),$('#emptyHistEvents')); refreshRangeEvents(); runRangeSearch(); } }catch{ alert('Invalid JSON.'); } }; r.readAsText(f); });
+  $('#btn7').addEventListener('click', ()=>setRangeTo(7));
+  $('#btn30').addEventListener('click', ()=>setRangeTo(30));
   $('#btnAll').addEventListener('click', setRangeAll);
   $('#rangeStart').addEventListener('change', refreshCharts);
   $('#rangeEnd').addEventListener('change', refreshCharts);
-  $('#btnExport').addEventListener('click', () => download('mood-entries.json', JSON.stringify(entries,null,2), 'application/json'));
-  $('#importFile').addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result));
-        if (Array.isArray(data)) {
-          const map = new Map(); [...entries, ...data].forEach(x => map.set(x.id, x));
-          entries = Array.from(map.values()).sort((a,b)=>+new Date(b.iso) - +new Date(a.iso));
-          saveEntries(entries);
-          renderRecent(); renderHistoryFor($('#histDate').value); refreshCharts();
-        }
-      } catch { alert('Invalid JSON.'); }
-    };
-    reader.readAsText(file);
-  });
-
-  $$('.tabbtn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-</script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js');
-    });
-  }
+  $('#groupMode').addEventListener('change', (e)=>{ const custom=e.target.value==='custom'; $('#groupN').style.display=custom?'':'none'; refreshCharts(); });
+  $('#groupN').addEventListener('change', refreshCharts);
+  $('#btnExport').addEventListener('click', ()=>download('mood-entries.json', JSON.stringify(entries,null,2), 'application/json'));
+  $('#btnExportAll').addEventListener('click', exportAllBundle);
+  $('#importFile').addEventListener('change',(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const data=JSON.parse(String(r.result)); if(Array.isArray(data)){ const map=new Map(); [...entries,...data].forEach(x=>map.set(x.id||uuid(),{...x,id:x.id||uuid()})); entries=Array.from(map.values()).sort((a,b)=>+new Date(b.iso)-+new Date(a.iso)); saveEntries(entries); renderRecent(); renderHistoryFor($('#histDate').value); refreshCharts(); runRangeSearch(); } }catch{ alert('Invalid JSON.'); } }; r.readAsText(f); });
+  $('#importAllFile').addEventListener('change', handleImportAll);
+  $('#srch7').addEventListener('click', ()=>{ $('#srchEnd').value=formatDate(new Date()); $('#srchStart').value=formatDate(new Date(Date.now()-6*86400000)); runRangeSearch(); });
+  $('#srch30').addEventListener('click', ()=>{ $('#srchEnd').value=formatDate(new Date()); $('#srchStart').value=formatDate(new Date(Date.now()-29*86400000)); runRangeSearch(); });
+  $('#srchAll').addEventListener('click', ()=>{ const pool=entries.length?entries:[{iso:new Date().toISOString()}]; const min=entries.reduce((m,e)=>Math.min(m,+new Date(e.iso)),+new Date(pool[0].iso)); $('#srchStart').value=formatDate(new Date(min)); $('#srchEnd').value=formatDate(new Date()); runRangeSearch(); });
+  $('#srchGo').addEventListener('click', runRangeSearch);
+  $('#srchStart').addEventListener('change', runRangeSearch);
+  $('#srchEnd').addEventListener('change', runRangeSearch);
+  $('#srchExportJSON').addEventListener('click', exportSearchJSON);
+  $('#srchExportPDF').addEventListener('click', exportSearchPDF);
 </script>
 </body>
-
 </html>
